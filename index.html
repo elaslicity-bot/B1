@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Realtime Chart Analyzer — Binance</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1b2d;--panel2:#10243a;--line:#1d3550;--text:#e8f0f8;--muted:#8fa5ba;--green:#20d49a;--red:#ff647c;--yellow:#f5c451;--blue:#4ea1ff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#06101d,#0a1727 55%,#07111f);color:var(--text);font:14px Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+button,select,input{font:inherit}button{cursor:pointer;border:1px solid var(--line);background:#12263c;color:var(--text);border-radius:9px;padding:9px 12px}
+button:hover{border-color:#356080;background:#17304a}.app{max-width:1600px;margin:auto;padding:18px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}.brand h1{margin:0;font-size:21px}.brand small{color:var(--muted)}.status{display:flex;align-items:center;gap:8px;color:var(--muted)}.dot{width:9px;height:9px;border-radius:50%;background:var(--red)}.dot.on{background:var(--green);box-shadow:0 0 12px #20d49a}.dot.warn{background:var(--yellow);box-shadow:0 0 12px #f5c451}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);padding:10px;border-radius:12px}.toolbar select,.toolbar input{background:#091827;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px}.toolbar label{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px}.tabs button.active{background:#1b3b5b;border-color:#4ea1ff}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:14px;margin-top:14px}.panel{background:rgba(13,27,45,.94);border:1px solid var(--line);border-radius:13px;overflow:hidden}.panelhd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.panelhd b{font-size:13px}.chartwrap{height:460px;position:relative;background:#081522}.chartwrap canvas{width:100%;height:100%;display:block}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:10px}.metric{background:#091827;border:1px solid var(--line);border-radius:10px;padding:11px}.metric span{display:block;color:var(--muted);font-size:11px}.metric strong{display:block;margin-top:5px;font-size:16px}.green{color:var(--green)}.red{color:var(--red)}.yellow{color:var(--yellow)}.blue{color:var(--blue)}
+.side{display:flex;flex-direction:column;gap:14px}.signal{text-align:center;padding:18px}.signal .badge{display:inline-block;padding:7px 14px;border-radius:20px;background:#17283a;font-weight:800;letter-spacing:.5px}.score{font-size:44px;font-weight:800;margin:8px}.scorebar{height:9px;background:#17283a;border-radius:9px;overflow:hidden}.scorebar i{display:block;height:100%;background:var(--green);width:0;transition:width .35s ease}.levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.level{background:#091827;border:1px solid var(--line);border-radius:9px;padding:10px;text-align:left}.level span{display:block;color:var(--muted);font-size:11px}.level b{font-size:15px}.analysis{padding:12px 14px}.analysis ul{padding-left:19px;margin:7px 0}.analysis li{margin:6px 0}.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px}.check{padding:7px 8px;border-radius:7px;background:#091827;border:1px solid var(--line);font-size:12px}.footer{margin-top:12px;color:var(--muted);font-size:11px;text-align:center}.warning{padding:9px 12px;color:#f7d779;background:#2a2413;border:1px solid #604d17;border-radius:9px;margin-top:10px}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.chartwrap{height:400px}}@media(max-width:680px){.side{display:flex}.metrics{grid-template-columns:1fr 1fr}.chartwrap{height:320px}.app{padding:9px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand"><h1>Realtime Chart Analyzer <span style="color:#4ea1ff">Binance</span></h1><small>เฉพาะ Time Frame 4H • เน้นเก็บสั้น winrate สูง จาก Momentum + แรงซื้อขาย</small></div>
+    <div class="status"><i class="dot" id="dot"></i><span id="status">กำลังโหลด…</span></div>
+  </div>
+  <div class="warning" style="margin:0 0 12px">ระบบนี้ยิงสัญญาณเฉพาะเมื่อ <b>เทรนด์ 4H + Momentum (RSI/ROC) + แรงซื้อขาย (Volume)</b> สอดคล้องกันครบทุกข้อเท่านั้น เพื่อเน้นคุณภาพสัญญาณ (winrate) มากกว่าจำนวนสัญญาณ — จึงอาจขึ้น WAIT บ่อยกว่าปกติ</div>
+  <div class="toolbar">
+    <select id="symbol">
+<option>ZETAUSDT</option><option>SUSHIUSDT</option><option>PEOPLEUSDT</option>
+<option>LUNAUSDT</option><option>LTCUSDT</option><option>FILUSDT</option>
+<option>DRIFTUSDT</option><option>DOTUSDT</option><option>CHZUSDT</option>
+<option>BCHUSDT</option><option>BATUSDT</option><option>1INCHUSDT</option>
+<option>DOGEUSDT</option><option>PEPEUSDT</option><option selected>SOLUSDT</option>
+</select>
+    <div class="tabs" id="modeTabs" style="display:flex;gap:6px">
+      <button data-mode="scalp" class="active">⚡ เก็บสั้น</button>
+      <button data-mode="swing">📈 เก็บยาว (~2.5 เท่า)</button>
+    </div>
+    <button id="refresh">↻ Refresh</button>
+    <button id="live">● Live: ON</button>
+  </div>
+  <div class="grid">
+    <main>
+      <section class="panel">
+        <div class="panelhd"><b id="title">SOLUSDT • 4H</b><span id="price">—</span></div>
+        <div class="chartwrap"><canvas id="chart"></canvas></div>
+        <div class="metrics">
+          <div class="metric"><span>Trend</span><strong id="trend">—</strong></div>
+          <div class="metric"><span>RSI 14</span><strong id="rsi">—</strong></div>
+          <div class="metric"><span>ADX 14</span><strong id="adx">—</strong></div>
+          <div class="metric"><span>ATR 14</span><strong id="atr">—</strong></div>
+        </div>
+      </section>
+      <section class="panel analysis">
+        <div class="panelhd" style="margin:-12px -14px 10px"><b>Confluence Engine</b><span id="regime">—</span></div>
+        <div class="checks" id="checks"></div>
+      </section>
+    </main>
+    <aside class="side">
+      <section class="panel signal">
+        <div style="color:var(--muted);font-size:11px">FINAL SIGNAL</div>
+        <div class="badge" id="signal">WAIT</div>
+        <div class="score" id="score">—</div>
+        <div style="color:var(--muted);font-size:11px">/ 100 • confidence <b id="conf">—</b></div>
+        <div class="scorebar"><i id="scorebar"></i></div>
+        <div class="levels">
+          <div class="level"><span>Entry</span><b id="entry">—</b></div>
+          <div class="level"><span>Stop Loss</span><b id="sl">—</b></div>
+          <div class="level"><span>TP1</span><b id="tp1">—</b></div>
+          <div class="level"><span>TP2</span><b id="tp2">—</b></div>
+          <div class="level"><span>Risk / Reward</span><b id="rr">—</b></div>
+          <div class="level"><span>Market Regime</span><b id="regime2">—</b></div>
+        </div>
+        <div class="warning">ข้อมูลราคาจริงจาก Binance Spot API สาธารณะ ไม่ใช้ API key ไม่มีการส่งคำสั่งซื้อขาย สัญญาณเป็นข้อมูลวิเคราะห์เท่านั้น ฟิวเจอร์ส/สปอตมีความเสี่ยงสูง</div>
+      </section>
+      <section class="panel analysis">
+        <div class="panelhd" style="margin:-12px -14px 10px"><b>Why this signal?</b></div>
+        <ul id="why"></ul>
+      </section>
+    </aside>
+  </div>
+  <div class="footer">Binance Spot public REST API • ไม่ใช้ API key • ไม่มีการส่งคำสั่งซื้อขาย</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>Number.isFinite(n)?n.toLocaleString(undefined,{maximumFractionDigits:n<1?6:2}):'—';
+const REST='https://api.binance.com/api/v3/klines';
+const state={symbol:'SOLUSDT',mode:'scalp',rows:[],live:true};
+let pollTimer=null;
+
+/* ---------- Indicators ---------- */
+function ema(a,p){let k=2/(p+1),out=[],e=a[0];out.push(e);for(let i=1;i<a.length;i++){e=a[i]*k+e*(1-k);out.push(e)}return out}
+function sma(a,p){let out=Array(a.length).fill(null),s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=p)s-=a[i-p];if(i>=p-1)out[i]=s/p}return out}
+function atr(rows,p){let tr=[];for(let i=0;i<rows.length;i++){let r=rows[i],prev=i?rows[i-1].c:r.c;tr.push(Math.max(r.h-r.l,Math.abs(r.h-prev),Math.abs(r.l-prev)))}return sma(tr,p)}
+function rsi(closes,p){let out=Array(closes.length).fill(null),g=[],l=[];for(let i=1;i<closes.length;i++){let d=closes[i]-closes[i-1];g.push(Math.max(d,0));l.push(Math.max(-d,0))}let ag=sma(g,p),al=sma(l,p);for(let i=p;i<closes.length;i++){let x=ag[i-1],y=al[i-1];out[i]=y===0?100:100-100/(1+x/y)}return out}
+function adx(rows,p){let n=rows.length,trs=[],plus=[],minus=[];for(let i=0;i<n;i++){let prev=i?rows[i-1]:rows[i],up=rows[i].h-prev.h,down=prev.l-rows[i].l;trs.push(Math.max(rows[i].h-rows[i].l,Math.abs(rows[i].h-prev.c),Math.abs(rows[i].l-prev.c)));plus.push(up>down&&up>0?up:0);minus.push(down>up&&down>0?down:0)}let st=sma(trs,p),sp=sma(plus,p),sm=sma(minus,p),dx=Array(n).fill(null);for(let i=p;i<n;i++){let diP=100*sp[i]/st[i],diM=100*sm[i]/st[i];dx[i]=100*Math.abs(diP-diM)/(diP+diM||1)}return sma(dx.map(x=>x??0),p)}
+function macd(c){let e12=ema(c,12),e26=ema(c,26),m=c.map((_,i)=>e12[i]-e26[i]),s=ema(m,9);return {m,s,h:m.map((x,i)=>x-s[i])}}
+function roc(closes,p){let out=Array(closes.length).fill(null);for(let i=p;i<closes.length;i++){out[i]=closes[i-p]?((closes[i]-closes[i-p])/closes[i-p])*100:0}return out}
+function calc(rows){
+  const r=rows; const n=r.length; if(n<60)return null;
+  let c=r.map(x=>x.c),e20=ema(c,20),e50=ema(c,50),e200=ema(c,200),R=rsi(c,14),A=adx(r,14),T=atr(r,14),M=macd(c),ROC=roc(c,10),i=n-1;
+  return {c,e20,e50,e200,R,A,T,M,ROC,i,pFast:20,pMid:50,pSlow:200};
+}
+function volumeStats(rows,p){
+  p=p||20;
+  const vols=rows.map(r=>r.v), n=rows.length;
+  const volAvgArr=sma(vols,p);
+  const avg=volAvgArr[n-1]||(vols.reduce((a,b)=>a+b,0)/n);
+  const lastVol=vols[n-1];
+  const volSurge= avg>0 ? lastVol>avg*1.15 : false;
+  const lastN=rows.slice(-10);
+  let buyVol=0,totalVol=0;
+  lastN.forEach(r=>{ if(r.c>=r.o)buyVol+=r.v; totalVol+=r.v; });
+  const buyRatio= totalVol>0 ? buyVol/totalVol : 0.5;
+  return {avg,lastVol,volSurge,buyRatio};
+}
+function detectPattern(rows){
+  const n=rows.length; if(n<2) return {};
+  const cur=rows[n-1], prev=rows[n-2];
+  const body=Math.abs(cur.c-cur.o), range=(cur.h-cur.l)||1e-9;
+  const upperWick=cur.h-Math.max(cur.o,cur.c), lowerWick=Math.min(cur.o,cur.c)-cur.l;
+  const prevBody=Math.abs(prev.c-prev.o);
+  const bullEngulf = prev.c<prev.o && cur.c>cur.o && cur.o<=prev.c && cur.c>=prev.o && body>prevBody*0.95;
+  const bearEngulf = prev.c>prev.o && cur.c<cur.o && cur.o>=prev.c && cur.c<=prev.o && body>prevBody*0.95;
+  const hammer = body>0 && body<range*0.5 && lowerWick>=body*2 && upperWick<=body*0.6;
+  const shootingStar = body>0 && body<range*0.5 && upperWick>=body*2 && lowerWick<=body*0.6;
+  const doji = body<=range*0.1;
+  return {bullEngulf,bearEngulf,hammer,shootingStar,doji};
+}
+function analyze(x,mode,extra){
+  extra=extra||{};
+  const pattern=extra.pattern||{}, vol=extra.vol||{volSurge:false,buyRatio:0.5};
+  let i=x.i,p=x.c[i];
+  let bull=x.e20[i]>x.e50[i]&&x.e50[i]>x.e200[i]&&p>x.e20[i];
+  let bear=x.e20[i]<x.e50[i]&&x.e50[i]<x.e200[i]&&p<x.e20[i];
+  let rr=x.R[i],adxv=x.A[i]||0,mac=x.M.h[i]>0,rocv=x.ROC[i]||0;
+  // เกณฑ์บังคับ (gate) เพื่อยิงเฉพาะจังหวะที่ momentum + แรงซื้อขายสอดคล้องกันจริง ลดสัญญาณหลอก เพิ่ม winrate
+  const momBull = rr>55 && rocv>0, momBear = rr<45 && rocv<0;
+  const volBull = vol.volSurge && vol.buyRatio>0.55, volBear = vol.volSurge && vol.buyRatio<0.45;
+  const trendStrong = adxv>25;
+  const bullPattern=pattern.bullEngulf||pattern.hammer, bearPattern=pattern.bearEngulf||pattern.shootingStar;
+  let score=50+(bull?12:bear?-12:0)+(momBull?10:momBear?-10:0)+(mac?(bull?6:bear?-6:0):0)+(trendStrong?8:0)+(volBull?10:volBear?-10:0);
+  if(bull&&bullPattern)score+=6; if(bear&&bearPattern)score-=6;
+  score=Math.max(0,Math.min(100,score));
+  let dir='WAIT';
+  if(bull&&trendStrong&&momBull&&volBull)dir='LONG';
+  else if(bear&&trendStrong&&momBear&&volBear)dir='SHORT';
+  const thLong=mode==='scalp'?72:70, thShort=mode==='scalp'?28:30;
+  let a=x.T[i]||Math.abs(p-x.e20[i])*.5||p*0.01;
+  const baseSlATR=0.45, baseTp1ATR=0.55, baseTp2ATR=0.9, longFactor=2.5;
+  const slATR = mode==='scalp'?baseSlATR:baseSlATR*longFactor;
+  const tp1ATR = mode==='scalp'?baseTp1ATR:baseTp1ATR*longFactor;
+  const tp2ATR = mode==='scalp'?baseTp2ATR:baseTp2ATR*longFactor;
+  const capSlPct=mode==='scalp'?0.010:0.010*longFactor;
+  const capTp1Pct=mode==='scalp'?0.013:0.013*longFactor;
+  const capTp2Pct=mode==='scalp'?0.020:0.020*longFactor;
+  const floorSlPct=mode==='scalp'?0.0025:0.0025*longFactor;
+  const floorTp1Pct=mode==='scalp'?0.0035:0.0035*longFactor;
+  const floorTp2Pct=mode==='scalp'?0.005:0.005*longFactor;
+  const clamp=(dist,floorPct,capPct)=>Math.min(Math.max(dist,p*floorPct),p*capPct);
+  const slDist=clamp(slATR*a,floorSlPct,capSlPct);
+  const tp1Dist=clamp(tp1ATR*a,floorTp1Pct,capTp1Pct);
+  const tp2Dist=clamp(tp2ATR*a,floorTp2Pct,capTp2Pct);
+  let entry=p,sl=dir==='LONG'?p-slDist:dir==='SHORT'?p+slDist:p,risk=Math.abs(entry-sl);
+  let tp1=dir==='LONG'?entry+tp1Dist:entry-tp1Dist,tp2=dir==='LONG'?entry+tp2Dist:entry-tp2Dist;
+  let rrVal=+(tp1Dist/(slDist||1)).toFixed(2);
+  const zoneW=clamp(a*(mode==='scalp'?0.1:0.1*longFactor),mode==='scalp'?0.0015:0.0015*longFactor,mode==='scalp'?0.004:0.004*longFactor);
+  const entryLo=entry-zoneW, entryHi=entry+zoneW;
+  return {score,dir,entry,entryLo,entryHi,sl,tp1,tp2,rr:rrVal,bull,bear,rsi:rr,adx:adxv,roc:rocv,atr:a,mac,bullPattern,bearPattern,pattern,momBull,momBear,volBull,volBear,volSurge:vol.volSurge,buyRatio:vol.buyRatio};
+}
+
+/* ---------- Fetch (direct to Binance, no proxy — per current test) ---------- */
+// ใส่ URL ของ Cloudflare Worker ของคุณเองตรงนี้ ถ้ามี (เชื่อถือได้สุด ไม่มี rate-limit)
+// เช่น const CUSTOM_PROXY='https://kucoin-proxy.yourname.workers.dev';
+const CUSTOM_PROXY='';
+const PROXIES=[
+  ...(CUSTOM_PROXY?[u=>`${CUSTOM_PROXY}?url=${encodeURIComponent(u)}`]:[]),
+  u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u=>`https://thingproxy.freeboard.io/fetch/${u}`
+];
+let usingProxy=false;
+async function fetchKlines(symbol,interval,limit){
+  const u=`${REST}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const errors=[];
+  try{
+    const res=await fetch(u,{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const j=await res.json();
+    if(!Array.isArray(j))throw new Error(j.msg||'unexpected response');
+    usingProxy=false;
+    return j.map(a=>({t:+a[0],o:+a[1],h:+a[2],l:+a[3],c:+a[4],v:+a[5]}));
+  }catch(directErr){errors.push('direct: '+directErr.message)}
+  for(const build of PROXIES){
+    try{
+      const res=await fetch(build(u),{cache:'no-store'});
+      const j=await res.json();
+      if(!Array.isArray(j))throw new Error(j.msg||'unexpected response');
+      usingProxy=true;
+      return j.map(a=>({t:+a[0],o:+a[1],h:+a[2],l:+a[3],c:+a[4],v:+a[5]}));
+    }catch(proxyErr){errors.push('proxy: '+proxyErr.message)}
+  }
+  throw new Error(errors.join(' | '));
+}
+
+async function load(){
+  setStatus('กำลังโหลด…','warn');
+  try{
+    const rows4h=await fetchKlines(state.symbol,'4h',300);
+    state.rows=rows4h;
+    render();
+    setStatus(usingProxy?'เชื่อมต่อสำเร็จ • ผ่าน proxy':'เชื่อมต่อสำเร็จ • Binance direct','on');
+    if(state.live)startPolling();
+  }catch(e){
+    setStatus('เชื่อมต่อไม่สำเร็จทั้ง direct และ proxy: '+e.message,'warn');
+  }
+}
+function startPolling(){
+  stopPolling();
+  pollTimer=setInterval(load,60000);
+}
+function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
+function setStatus(s,d){$('status').textContent=s;$('dot').className='dot '+(d==='on'?'on':d==='warn'?'warn':'')}
+
+/* ---------- Render ---------- */
+function render(){
+  let x=calc(state.rows);
+  if(!x){setStatus('ข้อมูลไม่พอสำหรับวิเคราะห์','warn');return}
+  const pattern=detectPattern(state.rows);
+  const vol=volumeStats(state.rows,20);
+  let z=analyze(x,state.mode,{pattern,vol}),p=x.c[x.i];
+  $('title').textContent=state.symbol+' • 4H';
+  $('price').textContent=fmt(p);
+  $('trend').textContent=z.bull?'BULLISH':z.bear?'BEARISH':'MIXED';$('trend').className=z.bull?'green':z.bear?'red':'yellow';
+  $('rsi').textContent=z.rsi.toFixed(1);$('adx').textContent=z.adx.toFixed(1);$('atr').textContent=fmt(z.atr);
+  $('signal').textContent=z.dir;$('signal').className='badge '+(z.dir==='LONG'?'green':z.dir==='SHORT'?'red':'yellow');
+  $('score').textContent=z.score.toFixed(0);$('scorebar').style.width=z.score+'%';
+  $('conf').textContent=z.score>=80?'HIGH':z.score>=65?'MEDIUM':'LOW';
+  $('entry').textContent=z.dir==='WAIT'?fmt(z.entry):fmt(z.entryLo)+' - '+fmt(z.entryHi);
+  $('sl').textContent=z.dir==='WAIT'?'—':fmt(z.sl);
+  $('tp1').textContent=z.dir==='WAIT'?'—':fmt(z.tp1);
+  $('tp2').textContent=z.dir==='WAIT'?'—':fmt(z.tp2);
+  $('rr').textContent=z.dir==='WAIT'?'—':'1 : '+z.rr.toFixed(2);
+  let regime=z.adx>25?(z.bull?'STRONG BULL':z.bear?'STRONG BEAR':'TREND'):'SIDEWAY / WEAK';
+  $('regime').textContent=regime;$('regime2').textContent=regime;
+  const patternLabel=z.bullPattern?(pattern.bullEngulf?'Bullish Engulfing':'Hammer'):z.bearPattern?(pattern.bearEngulf?'Bearish Engulfing':'Shooting Star'):(pattern.doji?'Doji (ไม่ชี้ทาง)':'ไม่พบรูปแบบชัดเจน');
+  let checks=[
+    ['EMA Alignment (4H)',z.bull||z.bear],
+    ['ADX > 25 (เทรนด์แข็งแรง)',z.adx>25],
+    ['Momentum (RSI+ROC)',z.momBull||z.momBear],
+    ['MACD',z.mac],
+    ['Volume Surge',z.volSurge],
+    ['แรงซื้อ/ขาย (Buy/Sell Pressure)',z.volBull||z.volBear],
+    ['Candlestick Pattern: '+patternLabel,z.bullPattern||z.bearPattern],
+    ['RR ≥ 1:1.2',true]
+  ];
+  $('checks').innerHTML=checks.map(a=>`<div class="check">${a[1]?'✓':'×'} ${a[0]}</div>`).join('');
+  let why=[];
+  if(z.bull)why.push('แนวโน้มจาก EMA (4H) เรียงตัวสนับสนุนฝั่ง LONG');
+  if(z.bear)why.push('แนวโน้มจาก EMA (4H) เรียงตัวสนับสนุนฝั่ง SHORT');
+  why.push('RSI ≈ '+z.rsi.toFixed(1)+' • ROC(10) ≈ '+z.roc.toFixed(2)+'%'+(z.momBull?' — momentum สนับสนุน LONG':z.momBear?' — momentum สนับสนุน SHORT':' — momentum ยังไม่ชัดพอ'));
+  why.push('ADX ≈ '+z.adx.toFixed(1)+(z.adx>25?' — แนวโน้มมีแรงหนุน':' — แนวโน้มยังอ่อน (ต้องการ >25 ถึงจะยิงสัญญาณ)'));
+  why.push('Volume ล่าสุด'+(z.volSurge?' พุ่งเกินค่าเฉลี่ย 20 แท่ง':' ยังไม่พุ่งเกินค่าเฉลี่ย')+' • สัดส่วนแรงซื้อ 10 แท่งล่าสุด ≈ '+(z.buyRatio*100).toFixed(0)+'%'+(z.volBull?' — แรงซื้อหนุน LONG':z.volBear?' — แรงขายหนุน SHORT':' — ยังไม่เอียงข้างชัดพอ'));
+  if(z.bullPattern||z.bearPattern)why.push('พบแท่ง '+patternLabel+' ที่แท่งล่าสุด สอดคล้องกับทิศทาง '+(z.bullPattern?'LONG':'SHORT'));
+  why.push('สไตล์: '+(state.mode==='scalp'?'เก็บสั้น — SL/TP แคบ เพื่อ winrate สูง เก็บกำไรเร็ว':'เก็บยาว — SL/TP กว้างกว่าเก็บสั้น ~2.5 เท่า'));
+  if(z.dir==='WAIT')why.push('เกณฑ์บังคับ (เทรนด์ + momentum + แรงซื้อขาย) ยังไม่ครบทุกข้อ ระบบจึงไม่ยิงสัญญาณ เพื่อรักษา winrate — รอจังหวะที่ชัดกว่านี้');
+  $('why').innerHTML=why.map(v=>'<li>'+v+'</li>').join('');
+  drawChart(x);
+}
+
+function drawChart(x){
+  let c=$('chart'),ctx=c.getContext('2d'),rect=c.getBoundingClientRect(),dpr=devicePixelRatio||1;
+  c.width=rect.width*dpr;c.height=rect.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  let W=rect.width,H=rect.height;ctx.clearRect(0,0,W,H);
+  let rows=state.rows.slice(-120),vals=rows.flatMap(r=>[r.h,r.l]),min=Math.min(...vals),max=Math.max(...vals),pad=(max-min)*.08||1;
+  min-=pad;max+=pad;
+  let left=55,right=12,top=18,bottom=20,cw=W-left-right,ch=H-top-bottom;
+  let y=v=>top+(max-v)/(max-min)*ch, step=cw/rows.length, body=Math.max(2,step*.62);
+  ctx.strokeStyle='#17304a';ctx.lineWidth=1;
+  for(let k=0;k<=5;k++){let yy=top+ch*k/5;ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(W-right,yy);ctx.stroke();ctx.fillStyle='#7189a0';ctx.font='10px system-ui';ctx.fillText(fmt(max-(max-min)*k/5),5,yy+3)}
+  rows.forEach((r,j)=>{
+    let xx=left+j*step+step/2,up=r.c>=r.o;
+    ctx.strokeStyle=up?'#20d49a':'#ff647c';ctx.beginPath();ctx.moveTo(xx,y(r.h));ctx.lineTo(xx,y(r.l));ctx.stroke();
+    ctx.fillStyle=up?'#20d49a':'#ff647c';
+    let yy=y(Math.max(r.o,r.c)),hh=Math.max(1,Math.abs(y(r.o)-y(r.c)));
+    ctx.fillRect(xx-body/2,yy,body,hh);
+  });
+  const e20=x.e20.slice(-120),e50=x.e50.slice(-120),e200=x.e200.slice(-120);
+  [[e20,'#4ea1ff'],[e50,'#f5c451'],[e200,'#c28cff']].forEach(([a,col])=>{
+    ctx.strokeStyle=col;ctx.lineWidth=1.4;ctx.beginPath();
+    a.forEach((v,j)=>{let xx=left+j*step+step/2;if(j===0)ctx.moveTo(xx,y(v));else ctx.lineTo(xx,y(v))});
+    ctx.stroke();
+  });
+  ctx.fillStyle='#8fa5ba';ctx.font='10px system-ui';
+  ctx.fillText('EMA20',left,12);ctx.fillText('EMA50',left+55,12);ctx.fillText('EMA200',left+105,12);
+}
+
+/* ---------- UI wiring ---------- */
+$('symbol').onchange=e=>{state.symbol=e.target.value;load()};
+$('refresh').onclick=load;
+$('live').onclick=()=>{
+  state.live=!state.live;
+  $('live').textContent='● Live: '+(state.live?'ON':'OFF');
+  if(state.live)startPolling(); else stopPolling();
+};
+document.querySelectorAll('#modeTabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#modeTabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  state.mode=b.dataset.mode;
+  render();
+});
+window.onresize=()=>{let x=calc(state.rows);if(x)drawChart(x)};
+
+load();
+</script>
+</body>
+</html>
